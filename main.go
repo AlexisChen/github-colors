@@ -27,7 +27,7 @@ func main() {
 	}
 
 	readme := "# Github Language Colors\n\n"
-	link := "[![](./svgs/%s.svg)](%s)"
+	link := "[![](./svgs/%s.svg)](%s)\n"
 
 	keys := make([]string, 0)
 	for k := range data {
