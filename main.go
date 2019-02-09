@@ -27,7 +27,7 @@ func main() {
 	}
 
 	readme := "# Github Language Colors\n\n"
-	link := "[![](https://placeholder.pics/svg/600x50/%s/%s-FFF/%s)](%s)"
+	link := "[![](./svgs/%s.svg)](%s)"
 
 	keys := make([]string, 0)
 	for k := range data {
@@ -53,6 +53,15 @@ func main() {
 					textColor = "#000"
 				}
 
+				// create svg
+				cleaned := strings.Replace(lang, " ", "-", -1)
+				cleaned = strings.Replace(cleaned, "'", "-", -1)
+				svg := fmt.Sprintf(`<svg width="600" height="50" xmlns="http://www.w3.org/2000/svg"><rect x="2" y="2" width="596" height="46" style="fill:%s"/><text x="50%%" y="50%%" font-size="18" text-anchor="middle" alignment-baseline="middle" font-family="monospace, sans-serif" fill="%s">%s</text></svg>`, color, textColor, lang)
+				err = ioutil.WriteFile("./svgs/"+cleaned+".svg", []byte(svg), 0644)
+				if err != nil {
+					log.Fatal(err)
+				}
+
 				// encode any spaces
 				lang = strings.Replace(lang, " ", "%20", -1)
 				url = strings.Replace(url, " ", "%20", -1)
@@ -60,7 +69,7 @@ func main() {
 				// encode any single quotes
 				lang = strings.Replace(lang, "'", "&apos;", -1)
 				url = strings.Replace(url, "'", "&apos;", -1)
-				readme += fmt.Sprintf(link, color[1:], textColor[1:], lang, url)
+				readme += fmt.Sprintf(link, cleaned, url)
 			}
 		}
 	}
