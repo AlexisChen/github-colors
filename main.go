@@ -27,7 +27,7 @@ func main() {
 	}
 
 	readme := "# Github Language Colors\n\n"
-	link := "<a href='%s' style='display: block; background: %s; text-align: center; font-size: 20px; color: %s;'>%s</a>\n"
+	link := "[![](https://placeholder.pics/svg/600x50/%s/%s-FFF/%s)](%s)"
 
 	keys := make([]string, 0)
 	for k := range data {
@@ -56,7 +56,7 @@ func main() {
 				// escape any single quotes
 				lang = strings.Replace(lang, "'", "&apos;", -1)
 				url = strings.Replace(url, "'", "&apos;", -1)
-				readme += fmt.Sprintf(link, url, color, textColor, lang)
+				readme += fmt.Sprintf(link, color[1:], textColor[1:], lang, url)
 			}
 		}
 	}
