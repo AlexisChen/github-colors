@@ -34,11 +34,14 @@ func main() {
 	link := "[![](./svgs/%s.svg)](%s)\n"
 
 	// sort languages by name
-	keys := make([]string, 0)
+	keys := make([]string, len(data))
 	for k := range data {
 		keys = append(keys, k)
 	}
-	sort.Strings(keys)
+	less := func(i, j int) bool {
+		return strings.ToLower(keys[i]) < strings.ToLower(keys[j])
+	}
+	sort.Slice(keys, less)
 
 	// find languages with colors
 	for _, lang := range keys {
