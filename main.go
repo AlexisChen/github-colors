@@ -53,7 +53,11 @@ func main() {
 					textColor = "#000"
 				}
 
-				// escape any single quotes
+				// encode any spaces
+				lang = strings.Replace(lang, " ", "%20", -1)
+				url = strings.Replace(url, " ", "%20", -1)
+
+				// encode any single quotes
 				lang = strings.Replace(lang, "'", "&apos;", -1)
 				url = strings.Replace(url, "'", "&apos;", -1)
 				readme += fmt.Sprintf(link, color[1:], textColor[1:], lang, url)
