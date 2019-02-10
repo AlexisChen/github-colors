@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"fmt"
+	"encoding/base64"
 	"html/template"
 	"io/ioutil"
 	"log"
@@ -14,7 +14,26 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+type image struct {
+	LangName  string
+	LangColor string
+	TextColor string
+}
+
+type imageLink struct {
+	EncodedName string
+	ImageName   string
+}
+
+type readme []imageLink
+
 func main() {
+
+	// parse templates
+	tmpl, err := template.ParseFiles("./image.tmpl", "./readme.tmpl")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// get and decode yaml
 	baseURL := "https://raw.githubusercontent.com"
@@ -23,20 +42,21 @@ func main() {
 		log.Fatal(err)
 	}
 
-	var data map[string]map[string]interface{}
-	err = yaml.NewDecoder(req.Body).Decode(&data)
+	defer req.Body.Close()
+
+	var languageData map[string]map[string]interface{}
+	err = yaml.NewDecoder(req.Body).Decode(&languageData)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// generate svgs and readme
-	readme := "# Github Language Colors\n\n"
-	link := "[![](./svgs/%s.svg)](%s)\n"
+	readmeData := readme{}
 
 	// sort languages by name
-	keys := make([]string, len(data))
-	for k := range data {
-		keys = append(keys, k)
+	keys := make([]string, len(languageData))
+	for key := range languageData {
+		keys = append(keys, key)
 	}
 	less := func(i, j int) bool {
 		return strings.ToLower(keys[i]) < strings.ToLower(keys[j])
@@ -45,12 +65,10 @@ func main() {
 
 	// find languages with colors
 	for _, lang := range keys {
-		meta := data[lang]
+		meta := languageData[lang]
 		if meta["color"] != nil {
 			color, ok := meta["color"].(string)
 			if ok {
-
-				url := fmt.Sprintf("https://github.com/trending?l=%s", lang)
 
 				// check if color is light or dark to determine text color
 				c, err := colorful.Hex(color)
@@ -58,58 +76,55 @@ func main() {
 					log.Fatal(err)
 				}
 				_, _, l := c.Hcl()
-				fmt.Printf("%s %s %.04f\n", lang, color[1:], l)
 				textColor := "#FFF"
 				if l > 0.7 {
 					textColor = "#000"
 				}
 
-				// create svg images
-				cleaned := strings.Replace(lang, " ", "-", -1)
-				cleaned = strings.Replace(cleaned, "'", "-", -1)
+				// create svg images with file name as base64
+				imageName := base64.StdEncoding.EncodeToString([]byte(lang))
 
-				t, err := template.ParseFiles("./svg.tmpl")
+				svgBuffer := bytes.Buffer{}
+
+				img := image{
+					LangName:  lang,
+					LangColor: color,
+					TextColor: textColor,
+				}
+
+				err = tmpl.ExecuteTemplate(&svgBuffer, "image.tmpl", img)
 				if err != nil {
 					log.Fatal(err)
 				}
 
-				var svg bytes.Buffer
-
-				templateData := struct {
-					LangName  string
-					LangColor string
-					TextColor string
-				}{
-					lang,
-					color,
-					textColor,
-				}
-				err = t.Execute(&svg, templateData)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				err = ioutil.WriteFile("./svgs/"+cleaned+".svg", svg.Bytes(), 0644)
+				err = ioutil.WriteFile("./svgs/"+imageName+".svg", svgBuffer.Bytes(), 0644)
 				if err != nil {
 					log.Fatal(err)
 				}
 
 				// encode any spaces
-				lang = strings.Replace(lang, " ", "%20", -1)
-				url = strings.Replace(url, " ", "%20", -1)
+				encodedName := strings.Replace(lang, " ", "%20", -1)
 
 				// encode any single quotes
-				lang = strings.Replace(lang, "'", "&apos;", -1)
-				url = strings.Replace(url, "'", "&apos;", -1)
+				encodedName = strings.Replace(encodedName, "'", "&apos;", -1)
 
 				// add language to readme
-				readme += fmt.Sprintf(link, cleaned, url)
+				readmeData = append(readmeData, imageLink{
+					EncodedName: encodedName,
+					ImageName:   imageName,
+				})
 			}
 		}
 	}
 
+	readmeBuffer := bytes.Buffer{}
+	err = tmpl.ExecuteTemplate(&readmeBuffer, "readme.tmpl", readmeData)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// create README.md
-	err = ioutil.WriteFile("./README.md", []byte(readme), 0644)
+	err = ioutil.WriteFile("./README.md", readmeBuffer.Bytes(), 0644)
 	if err != nil {
 		log.Fatal(err)
 	}
